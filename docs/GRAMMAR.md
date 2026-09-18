@@ -13,7 +13,7 @@ Product KeySuite. Standard GDk9. MODE+BIND out of scope.
 ## Transition table
 
 | State | Event | Next | Action |
-| --- | --- | --- |
+| --- | --- | --- | --- |
 | IDLE | CONTENT | COMPOSE | append |
 | IDLE | COMMIT | IDLE | noop |
 | IDLE | ABORT | IDLE | noop |
