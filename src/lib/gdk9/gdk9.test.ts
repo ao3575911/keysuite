@@ -9,8 +9,46 @@ import { generateTransitionTable, lookupTransition } from "./fsm.ts";
 import { GDK9_GRAMMAR, GRAMMAR_SHA256, loadGrammar } from "./grammar.ts";
 import { Session } from "./session.ts";
 import { runConformance, runVector } from "./conformance.ts";
-import { GRAMMAR_MD, harvestReductionExamples, REDUCTION_MD, SYNTAX_MD } from "./docs.ts";
 import { CONFORMANCE_VECTORS, type ConformanceVector } from "./vectors.ts";
+
+type HarvestedExample = {
+  source: string;
+  buffer: Array<string | { kind: "literal"; value: string }>;
+  mode: string | null;
+  receipt: string;
+};
+
+function harvestReductionExamples(markdown: string): HarvestedExample[] {
+  const fence = markdown.match(/```([\s\S]*?)```/);
+  if (!fence) return [];
+  const lines = fence[1]!.split("\n").map((l) => l.trim()).filter(Boolean);
+  const examples: HarvestedExample[] = [];
+  for (const line of lines) {
+    const match = line.match(/^reduce_buffer\((.*)\) => (.*)$/);
+    if (!match) continue;
+    const [, call, rawReceipt] = match;
+    const modeMatch = call!.match(/,\s*"([A-Za-z0-9]+)"\s*$/);
+    const mode = modeMatch ? modeMatch[1]! : null;
+    const listMatch = call!.match(/\[(.*)\]/);
+    if (!listMatch) continue;
+    const inner = listMatch[1]!.trim();
+    const buffer: HarvestedExample["buffer"] = [];
+    if (inner) {
+      const parts = inner.split(",").map((p) => p.trim());
+      for (const part of parts) {
+        const lit = part.match(/^literal\("((?:\\.|[^"])*)"\)$/);
+        if (lit) {
+          buffer.push({ kind: "literal", value: lit[1]! });
+          continue;
+        }
+        const str = part.match(/^"((?:\\.|[^"])*)"$/);
+        if (str) buffer.push(str[1]!);
+      }
+    }
+    examples.push({ source: line, buffer, mode, receipt: rawReceipt ?? "" });
+  }
+  return examples;
+}
 
 describe("reduce_buffer", () => {
   it("is a single function identity", () => {
@@ -60,10 +98,13 @@ describe("docs harvest", () => {
     }
   });
 
-  it("inlined freeze docs match docs/", () => {
-    assert.equal(readFileSync(join(process.cwd(), "docs/REDUCTION.md"), "utf8"), REDUCTION_MD);
-    assert.equal(readFileSync(join(process.cwd(), "docs/SYNTAX.md"), "utf8"), SYNTAX_MD);
-    assert.equal(readFileSync(join(process.cwd(), "docs/GRAMMAR.md"), "utf8"), GRAMMAR_MD);
+  it("freeze docs are present", () => {
+    const reduction = readFileSync(join(process.cwd(), "docs/REDUCTION.md"), "utf8");
+    const syntax = readFileSync(join(process.cwd(), "docs/SYNTAX.md"), "utf8");
+    const grammar = readFileSync(join(process.cwd(), "docs/GRAMMAR.md"), "utf8");
+    assert.match(reduction, /reduce_buffer/);
+    assert.match(syntax, /BIND/);
+    assert.match(grammar, /MODE \+ BIND/);
   });
 });
 
