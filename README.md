@@ -1,5 +1,7 @@
 # KeySuite
 
+[![conformance](https://github.com/ao3575911/keysuite/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ao3575911/keysuite/actions/workflows/ci.yml)
+
 Reference runtime for **GDk9** 1.1.0. Local web console. No model in the core.
 
 Algebra is `reduce_buffer` only: first-bind split, U+2192, optional `mode(core)` wrap. Receipt ρ(B, μ) exists only at COMMIT.
